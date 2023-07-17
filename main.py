@@ -28,6 +28,14 @@ class Record:
     def __str__(self) -> str:
         return f"{self.name} {self.show_phone_list()}"
     
+    def new_phone_list(self, phone:Phone) -> None:
+        new_phone_list = list()
+        new_phone_list.append(phone)
+        self.phone = new_phone_list
+    
+    def add_to_phone_list(self, phone:Phone):
+        self.phone.append(phone)
+    
     def show_phone_list(self) -> list:
         result = ""
         count = 1
@@ -39,9 +47,6 @@ class Record:
 
         return result
 
-    def change_phone(self, phone:list[Phone]=list()) -> None:
-        self.phone = phone
-
 
 class AdressBook(UserDict):
     def add_record(self, record:Record) -> str:
@@ -51,7 +56,7 @@ class AdressBook(UserDict):
     def add_to_record(self, name:Name, phone:Phone) -> str:
         current_record = self.data.get(name.value)
         if current_record:
-            current_record.phone.append(Phone(phone.value))
+            current_record.add_to_phone_list(phone)
             return f"Succesfully added phone '{phone}' to name '{current_record.name}'"
         else:
             return f"Can't find name '{name}'"
@@ -60,9 +65,7 @@ class AdressBook(UserDict):
         current_record = self.data.get(name.value)
         
         if current_record:
-            new_phone_list = list()
-            new_phone_list.append(Phone(phone.value))
-            current_record.change_phone(new_phone_list)
+            current_record.new_phone_list(phone)
             return f"Succesfully changed record '{current_record}'"
         else:
             return f"Can't find name '{name}'"
@@ -174,9 +177,8 @@ def command_add(**kwargs) -> str:
     if adressbook.is_name_in_adressbook(name):
         return adressbook.add_to_record(name, phone)
     else:
-        phone_list = list()
-        phone_list.append(phone)
-        record = Record(name, phone_list)
+        record = Record(name)
+        record.new_phone_list(phone)
         return adressbook.add_record(record)
 
 
@@ -185,11 +187,13 @@ def command_change(**kwargs) -> str:
     name = Name(kwargs["name"])
     phone = Phone(kwargs["phone"])
     return adressbook.change_record(name, phone)
-    
+
+
 @input_error
 def command_delete(**kwargs) -> str:
     name = Name(kwargs["name"])
     return adressbook.delete_record(name)
+
 
 @input_error
 def command_phone(**kwargs) -> str:
