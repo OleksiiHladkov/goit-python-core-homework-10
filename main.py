@@ -1,9 +1,100 @@
 import re
 from rich import print
 from rich.table import Table
+from collections import UserDict
 
 
-contacts = {}
+class Field:
+    def __init__(self, value: str) -> None:
+        self.value = value
+    
+    def __str__(self) -> str:
+        return self.value
+
+
+class Name(Field):
+    pass
+
+
+class Phone(Field):
+    pass
+
+
+class Record:
+    def __init__(self, name:Name, phone:list[Phone]=list()) -> None:
+        self.name = name
+        self.phone = phone
+
+    def __str__(self) -> str:
+        return f"{self.name} {self.show_phone_list()}"
+    
+    def show_phone_list(self) -> list:
+        result = ""
+        count = 1
+        
+        for item in self.phone:
+            sep = ", " if count < len(self.phone) else ""
+            result += str(item) + sep
+            count += 1
+
+        return result
+
+    def change_phone(self, phone:list[Phone]=list()) -> None:
+        self.phone = phone
+
+
+class AdressBook(UserDict):
+    def add_record(self, record:Record) -> str:
+        self.data[record.name.value] = record
+        return f"Succesfully added record '{record}'"
+        
+    def add_to_record(self, name:Name, phone:Phone) -> str:
+        current_record = self.data.get(name.value)
+        if current_record:
+            current_record.phone.append(Phone(phone.value))
+            return f"Succesfully added phone '{phone}' to name '{current_record.name}'"
+        else:
+            return f"Can't find name '{name}'"
+        
+    def change_record(self, name:Name, phone:Phone) -> str:
+        current_record = self.data.get(name.value)
+        
+        if current_record:
+            new_phone_list = list()
+            new_phone_list.append(Phone(phone.value))
+            current_record.change_phone(new_phone_list)
+            return f"Succesfully changed record '{current_record}'"
+        else:
+            return f"Can't find name '{name}'"
+
+    def delete_record(self, name) -> str:
+        current_record = self.data.pop(name.value)
+        
+        if current_record:
+            return f"Succesfully deleted record '{current_record}'"
+        else:
+            return f"Can't find name '{name}'"
+    
+    def is_name_in_adressbook(self, name:Name) -> bool:
+        return name.value in self.data.keys()
+    
+    def show_phone(self, name:Name) -> Phone:
+        record:Record = self.get(name.value)
+
+        if record:
+            return f"Successfully finded number '{record.show_phone_list()}' by contact '{name}'"
+        else:
+            return f"Can't find number by contact '{name}'"
+        
+    def show_all(self) -> Table:
+        result = Table(title="Contacts list")
+        result.add_column("Name", justify="center",)
+        result.add_column("Phone", justify="center")
+        
+        for name, record in self.data.items():
+            result.add_row(str(name), record.show_phone_list())
+        
+        return result
 
 
 def parcing_data(value:str) -> dict:
@@ -64,9 +155,9 @@ def input_error(handler_func):
             
             result = handler_func(**kwargs)
         except KeyError as key:
-            result = f"You must enter {key}"
+            result = f"Name {key} is not found" if not str(key) in ("'name'", "'phone'") else f"You must enter {key}"
         except ValueError:
-            result = result = "Phone number must be in format '+\[country]\[town]\[number]'. Examples: '+380661234567' or '+442012345678'"
+            result = "Phone number must be in format '+\[country]\[town]\[number]'. Examples: '+380661234567' or '+442012345678'"
         
         return result
     return inner_func
@@ -78,39 +169,36 @@ def command_hello(**kwargs) -> str:
 
 @input_error
 def command_add(**kwargs) -> str:
-    name = kwargs["name"]
-    phone = kwargs["phone"]
-    contacts[name] = phone
-    
-    return f"Successfully added contact '{name}' with number '{phone}'"
+    name = Name(kwargs["name"])
+    phone = Phone(kwargs["phone"])
+    if adressbook.is_name_in_adressbook(name):
+        return adressbook.add_to_record(name, phone)
+    else:
+        phone_list = list()
+        phone_list.append(phone)
+        record = Record(name, phone_list)
+        return adressbook.add_record(record)
 
 
 @input_error
 def command_change(**kwargs) -> str:
-    name = kwargs["name"]
-    phone = kwargs["phone"]
-    contacts[name] = phone
+    name = Name(kwargs["name"])
+    phone = Phone(kwargs["phone"])
+    return adressbook.change_record(name, phone)
     
-    return f"Successfully changed contact '{name}' with number '{phone}'"
-    
+@input_error
+def command_delete(**kwargs) -> str:
+    name = Name(kwargs["name"])
+    return adressbook.delete_record(name)
 
 @input_error
 def command_phone(**kwargs) -> str:
-    name = kwargs["name"]
-    phone = contacts.get(name)
-    
-    return f"Successfully finded number '{phone}' by contact '{name}'"
+    name = Name(kwargs["name"])
+    return adressbook.show_phone(name)
 
 
 def command_show_all(**kwargs) -> Table:
-    result = Table(title="Contacts list")
-    result.add_column("Name", justify="center",)
-    result.add_column("Phone", justify="center")
-    
-    for name, phone in contacts.items():
-        result.add_row(name, phone)
-    
-    return result
+    return adressbook.show_all()
 
 
 def command_exit(**kwargs) -> str:
@@ -120,6 +208,7 @@ def command_exit(**kwargs) -> str:
 COMMANDS = {"hello": command_hello,
             "add": command_add,
             "change": command_change,
+            "delete": command_delete,
             "phone": command_phone,
             "show all": command_show_all,
             "good bye": command_exit,
@@ -155,5 +244,6 @@ def main():
 
 
 if __name__ == "__main__":
+    adressbook = AdressBook()
     main()
     
