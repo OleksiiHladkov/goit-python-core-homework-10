@@ -21,27 +21,27 @@ class Phone(Field):
 
 
 class Record:
-    def __init__(self, name:Name, phone:list[Phone]=list()) -> None:
+    def __init__(self, name:Name, phones:list[Phone]=list()) -> None:
         self.name = name
-        self.phone = phone
+        self.phones = phones
 
     def __str__(self) -> str:
-        return f"{self.name} {self.show_phone_list()}"
+        return f"{self.name} {self.show_phones_list()}"
     
-    def new_phone_list(self, phone:Phone) -> None:
-        new_phone_list = list()
-        new_phone_list.append(phone)
-        self.phone = new_phone_list
+    def new_phones_list(self, phone:Phone) -> None:
+        new_phones_list = list()
+        new_phones_list.append(phone)
+        self.phones = new_phones_list
     
-    def add_to_phone_list(self, phone:Phone):
-        self.phone.append(phone)
+    def add_to_phones_list(self, phone:Phone):
+        self.phones.append(phone)
     
-    def show_phone_list(self) -> list:
+    def show_phones_list(self) -> list:
         result = ""
         count = 1
         
-        for item in self.phone:
-            sep = ", " if count < len(self.phone) else ""
+        for item in self.phones:
+            sep = ", " if count < len(self.phones) else ""
             result += str(item) + sep
             count += 1
 
@@ -53,23 +53,6 @@ class AdressBook(UserDict):
         self.data[record.name.value] = record
         return f"Succesfully added record '{record}'"
         
-    def add_to_record(self, name:Name, phone:Phone) -> str:
-        current_record = self.data.get(name.value)
-        if current_record:
-            current_record.add_to_phone_list(phone)
-            return f"Succesfully added phone '{phone}' to name '{current_record.name}'"
-        else:
-            return f"Can't find name '{name}'"
-        
-    def change_record(self, name:Name, phone:Phone) -> str:
-        current_record = self.data.get(name.value)
-        
-        if current_record:
-            current_record.new_phone_list(phone)
-            return f"Succesfully changed record '{current_record}'"
-        else:
-            return f"Can't find name '{name}'"
-
     def delete_record(self, name) -> str:
         current_record = self.data.pop(name.value)
         
@@ -81,11 +64,11 @@ class AdressBook(UserDict):
     def is_name_in_adressbook(self, name:Name) -> bool:
         return name.value in self.data.keys()
     
-    def show_phone(self, name:Name) -> Phone:
+    def show_phones(self, name:Name) -> Phone:
         record:Record = self.get(name.value)
 
         if record:
-            return f"Successfully finded number '{record.show_phone_list()}' by contact '{name}'"
+            return f"Successfully finded number '{record.show_phones_list()}' by contact '{name}'"
         else:
             return f"Can't find number by contact '{name}'"
         
@@ -95,7 +78,7 @@ class AdressBook(UserDict):
         result.add_column("Phone", justify="center")
         
         for name, record in self.data.items():
-            result.add_row(str(name), record.show_phone_list())
+            result.add_row(str(name), record.show_phones_list())
         
         return result
 
@@ -174,11 +157,18 @@ def command_hello(**kwargs) -> str:
 def command_add(**kwargs) -> str:
     name = Name(kwargs["name"])
     phone = Phone(kwargs["phone"])
+    
     if adressbook.is_name_in_adressbook(name):
-        return adressbook.add_to_record(name, phone)
+        record:Record = adressbook.get(name.value)
+        
+        if record:
+            record.add_to_phones_list(phone)
+            return f"Succesfully added phone '{phone}' to name '{record.name}'"
+        else:
+            return f"Can't find name '{name}'"
     else:
         record = Record(name)
-        record.new_phone_list(phone)
+        record.new_phones_list(phone)
         return adressbook.add_record(record)
 
 
@@ -186,7 +176,14 @@ def command_add(**kwargs) -> str:
 def command_change(**kwargs) -> str:
     name = Name(kwargs["name"])
     phone = Phone(kwargs["phone"])
-    return adressbook.change_record(name, phone)
+    
+    record:Record = adressbook.get(name.value)
+    
+    if record:
+        record.new_phones_list(phone)
+        return f"Succesfully changed record '{record}'"
+    else:
+        return f"Can't find name '{name}'"
 
 
 @input_error
@@ -198,7 +195,7 @@ def command_delete(**kwargs) -> str:
 @input_error
 def command_phone(**kwargs) -> str:
     name = Name(kwargs["name"])
-    return adressbook.show_phone(name)
+    return adressbook.show_phones(name)
 
 
 def command_show_all(**kwargs) -> Table:
