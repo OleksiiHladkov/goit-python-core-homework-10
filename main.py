@@ -1,86 +1,7 @@
 import re
+from classes import Name, Phone, Record, AdressBook, Table
 from rich import print
-from rich.table import Table
-from collections import UserDict
 
-
-class Field:
-    def __init__(self, value: str) -> None:
-        self.value = value
-    
-    def __str__(self) -> str:
-        return self.value
-
-
-class Name(Field):
-    pass
-
-
-class Phone(Field):
-    pass
-
-
-class Record:
-    def __init__(self, name:Name, phones:list[Phone]=list()) -> None:
-        self.name = name
-        self.phones = phones
-
-    def __str__(self) -> str:
-        return f"{self.name} {self.show_phones_list()}"
-    
-    def new_phones_list(self, phone:Phone) -> None:
-        new_phones_list = list()
-        new_phones_list.append(phone)
-        self.phones = new_phones_list
-    
-    def add_to_phones_list(self, phone:Phone):
-        self.phones.append(phone)
-    
-    def show_phones_list(self) -> list:
-        result = ""
-        count = 1
-        
-        for item in self.phones:
-            sep = ", " if count < len(self.phones) else ""
-            result += str(item) + sep
-            count += 1
-
-        return result
-
-
-class AdressBook(UserDict):
-    def add_record(self, record:Record) -> str:
-        self.data[record.name.value] = record
-        return f"Succesfully added record '{record}'"
-        
-    def delete_record(self, name) -> str:
-        current_record = self.data.pop(name.value)
-        
-        if current_record:
-            return f"Succesfully deleted record '{current_record}'"
-        else:
-            return f"Can't find name '{name}'"
-    
-    def is_name_in_adressbook(self, name:Name) -> bool:
-        return name.value in self.data.keys()
-    
-    def show_phones(self, name:Name) -> Phone:
-        record:Record = self.get(name.value)
-
-        if record:
-            return f"Successfully finded number '{record.show_phones_list()}' by contact '{name}'"
-        else:
-            return f"Can't find number by contact '{name}'"
-        
-    def show_all(self) -> Table:
-        result = Table(title="Contacts list")
-        result.add_column("Name", justify="center",)
-        result.add_column("Phone", justify="center")
-        
-        for name, record in self.data.items():
-            result.add_row(str(name), record.show_phones_list())
-        
-        return result
 
 
 def parcing_data(value:str) -> dict:
@@ -158,17 +79,12 @@ def command_add(**kwargs) -> str:
     name = Name(kwargs["name"])
     phone = Phone(kwargs["phone"])
     
-    if adressbook.is_name_in_adressbook(name):
-        record:Record = adressbook.get(name.value)
-        
-        if record:
-            record.add_to_phones_list(phone)
-            return f"Succesfully added phone '{phone}' to name '{record.name}'"
-        else:
-            return f"Can't find name '{name}'"
+    record:Record = adressbook.get(name.value)
+    
+    if record:
+        return record.add_phone(phone)
     else:
-        record = Record(name)
-        record.new_phones_list(phone)
+        record = Record(name, phone)
         return adressbook.add_record(record)
 
 
@@ -237,7 +153,11 @@ def main():
                 print(result, "\n")
                 break
 
-            print(result, "\n")
+            if isinstance(result, (list, tuple)):
+                # printing list of Tables or tuple of Tables (pagination)
+                print(*result, "\n")
+            else:
+                print(result, "\n")
         else:
             print("Can not recognize a command! Please, try again.", "\n")     
 
